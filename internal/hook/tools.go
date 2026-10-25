@@ -116,8 +116,24 @@ func PreToolUse(in Input) int {
 	return 2
 }
 
+// Strict mode, UNTRUSTED_BOUNDARY_ABSENT=halt: a compaction that left any
+// ledger block without a trace halts tool use until a human acks. Off by
+// default, because a summary drops most blocks and nothing is wrong.
+func haltIfAbsent(in Input, r compactReport) int {
+	if os.Getenv("UNTRUSTED_BOUNDARY_ABSENT") != "halt" || len(r.Absent) == 0 {
+		return 0
+	}
+	Log(in.Cwd, map[string]any{"event": "halted-on-absent", "tool": in.ToolName, "absent": len(r.Absent)})
+	fmt.Fprintf(os.Stderr, "untrusted-boundary: tool use halted (UNTRUSTED_BOUNDARY_ABSENT=halt). The last compaction left %d "+
+		"untrusted-data block(s) without a trace in the summary; anything the summary says about them is unverifiable. "+
+		"A human needs to read .claude/untrusted-boundary/last-compact.json and run `untrusted-boundary ack` to continue. "+
+		"First absent block, from %s.\n", len(r.Absent), r.Absent[0].Source)
+	return 2
+}
+
 type compactReport struct {
 	Leaked       []boundary.Leak `json:"leaked"`
+	Absent       []preview       `json:"absent"`
 	Acknowledged bool            `json:"acknowledged"`
 }
 
@@ -130,8 +146,11 @@ func haltIfLeaked(in Input) int {
 		return 0
 	}
 	var r compactReport
-	if json.Unmarshal(b, &r) != nil || len(r.Leaked) == 0 || r.Acknowledged {
+	if json.Unmarshal(b, &r) != nil || r.Acknowledged {
 		return 0
+	}
+	if len(r.Leaked) == 0 {
+		return haltIfAbsent(in, r)
 	}
 	Log(in.Cwd, map[string]any{"event": "halted-on-leak", "tool": in.ToolName, "leaks": len(r.Leaked)})
 	line := ""

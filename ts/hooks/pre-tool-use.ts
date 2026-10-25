@@ -45,15 +45,35 @@ function haltIfLeaked(): void {
   if (process.env["UNTRUSTED_BOUNDARY_ON_LEAK"] === "warn") return;
   const path = join(stateDir(input.cwd), "last-compact.json");
   if (!existsSync(path)) return;
-  const report = JSON.parse(readFileSync(path, "utf8")) as { leaked?: { source: string; lines: string[] }[]; acknowledged?: boolean };
+  const report = JSON.parse(readFileSync(path, "utf8")) as {
+    leaked?: { source: string; lines: string[] }[];
+    absent?: { source: string; lines: string[] }[];
+    acknowledged?: boolean;
+  };
+  if (report.acknowledged) return;
   const leaked = report.leaked ?? [];
-  if (leaked.length === 0 || report.acknowledged) return;
+  if (leaked.length === 0) return haltIfAbsent(report.absent ?? []);
   logEvent(input.cwd, { event: "halted-on-leak", tool: input.tool_name, leaks: leaked.length });
   process.stderr.write(
     `untrusted-boundary: tool use halted. The last compaction carried ${leaked.length} block(s) of untrusted data ` +
     `through without their boundaries, and the summary cannot be repaired from here. A human needs to read ` +
     `.claude/untrusted-boundary/last-compact.json and run \`npm run hook:ack\` in the hook folder to continue. ` +
     `First leaked line, from ${leaked[0]?.source}: ${JSON.stringify(leaked[0]?.lines[0] ?? "")}\n`,
+  );
+  process.exit(2);
+}
+
+// Strict mode, UNTRUSTED_BOUNDARY_ABSENT=halt: a compaction that left any
+// ledger block without a trace halts tool use until a human acks. Off by
+// default, because a summary drops most blocks and nothing is wrong.
+function haltIfAbsent(absent: { source: string; lines: string[] }[]): void {
+  if (process.env["UNTRUSTED_BOUNDARY_ABSENT"] !== "halt" || absent.length === 0) return;
+  logEvent(input.cwd, { event: "halted-on-absent", tool: input.tool_name, absent: absent.length });
+  process.stderr.write(
+    `untrusted-boundary: tool use halted (UNTRUSTED_BOUNDARY_ABSENT=halt). The last compaction left ${absent.length} ` +
+    `untrusted-data block(s) without a trace in the summary; anything the summary says about them is unverifiable. ` +
+    `A human needs to read .claude/untrusted-boundary/last-compact.json and run \`npm run hook:ack\` in the hook folder ` +
+    `to continue. First absent block, from ${absent[0]?.source}.\n`,
   );
   process.exit(2);
 }

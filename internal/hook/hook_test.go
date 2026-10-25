@@ -130,10 +130,22 @@ func TestParaphrasedBlockIsReportedAbsentAndNamedToNextContext(t *testing.T) {
 	if len(r.Leaked) != 0 || len(r.Absent) != 1 || r.Absent[0].Source != "tool mcp__db__find" || r.Absent[0].Lines[0] != note {
 		t.Fatalf("report: %s", b)
 	}
-	// no halt: a paraphrase cannot be proven, so tool use continues
+	// no halt by default: a paraphrase cannot be proven, so tool use continues
 	if code := PreToolUse(input(t, cwd, "S", "Bash", nil, map[string]any{"command": "ls"})); code != 0 {
 		t.Fatalf("expected no halt, got exit %d", code)
 	}
+	// strict mode halts until a human acks
+	t.Setenv("UNTRUSTED_BOUNDARY_ABSENT", "halt")
+	if code := PreToolUse(input(t, cwd, "S", "Bash", nil, map[string]any{"command": "ls"})); code != 2 {
+		t.Fatalf("strict: expected halt, got exit %d", code)
+	}
+	if code := Ack(cwd); code != 0 {
+		t.Fatalf("ack exit %d", code)
+	}
+	if code := PreToolUse(input(t, cwd, "S", "Bash", nil, map[string]any{"command": "ls"})); code != 0 {
+		t.Fatalf("strict: expected resume after ack, got exit %d", code)
+	}
+	t.Setenv("UNTRUSTED_BOUNDARY_ABSENT", "")
 	// the next context is told which source went missing
 	rd, wr, _ := os.Pipe()
 	saved := os.Stdout

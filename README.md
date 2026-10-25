@@ -74,6 +74,7 @@ Environment: `UNTRUSTED_BOUNDARY_TOOLS` is the regex for which tools get wrapped
 `^mcp__|^WebFetch$|^WebSearch$`; add `|^Bash$|^Read$` if you read logs through those, which is how
 the Tenet attack came in. `UNTRUSTED_BOUNDARY_ON_LEAK=warn` turns the halt into a note.
 `UNTRUSTED_BOUNDARY_PRECOMPACT=warn` logs instead of blocking compaction.
+`UNTRUSTED_BOUNDARY_ABSENT=halt` is strict mode: a compaction that leaves any ledger block without a trace in the summary halts tool use until `ack`, the same as a leak. Off by default, because a summary drops most blocks and nothing is wrong; turn it on when a reworded block is a risk you would rather read about than find out about.
 
 `onFailure: "block"` on the Pre hooks means a hook that cannot start blocks the action instead of
 letting it through.
@@ -94,7 +95,7 @@ need to share one.
 | `hash-mismatch` | `sha256(content)` is not the hash in the tags | same |
 | `nested-boundary` | a live boundary string sits inside a block (only possible if something other than the hook wrote it) | same |
 | `leaked` | lines of a wrapped block survived compaction bare, and the full block did not, so the tags cannot be put back | PostCompact reports it, PreToolUse halts on it |
-| absent (not a failure) | a ledger block has no trace in the summary; it was dropped or reworded, and a rewording cannot be verified | PostCompact reports it, SessionStart names its source to the next context |
+| absent (not a failure) | a ledger block has no trace in the summary; it was dropped or reworded, and a rewording cannot be verified | PostCompact reports it, SessionStart names its source to the next context, PreToolUse halts on it only with `UNTRUSTED_BOUNDARY_ABSENT=halt` |
 
 ## Latency
 

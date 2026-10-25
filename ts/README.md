@@ -77,6 +77,7 @@ paths at wherever you put this folder.
 
 `npm run hook:ack` marks the last compaction report as read and lifts the halt.
 `UNTRUSTED_BOUNDARY_ON_LEAK=warn` turns the halt into a note for people who want that.
+`UNTRUSTED_BOUNDARY_ABSENT=halt` is strict mode: a compaction that leaves any ledger block without a trace in the summary halts tool use until `npm run hook:ack`, the same as a leak. Off by default, because a summary drops most blocks and nothing is wrong.
 
 `onFailure: "block"` on the Pre hooks means a hook that cannot start blocks the action instead of
 letting it through. `UNTRUSTED_BOUNDARY_TOOLS` is the regex for which tools get wrapped, default
