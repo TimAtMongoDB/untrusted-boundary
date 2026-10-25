@@ -2,6 +2,7 @@ package hook
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,5 +106,43 @@ func TestPreCompactSkipsWithEmptyLedgerAndBlocksOnBrokenBlock(t *testing.T) {
 	LedgerAppend(in, boundary.LedgerEntry{Hash: "x", Source: "s", Content: "c"})
 	if code := PreCompact(in); code != 2 {
 		t.Fatalf("broken block in transcript should block compaction, got %d", code)
+	}
+}
+
+// A summary that rewords the data in its own terms matches no hash and no
+// line. The block is reported absent, nothing halts, and the next context
+// is told the source so the paraphrase is read as data.
+func TestParaphrasedBlockIsReportedAbsentAndNamedToNextContext(t *testing.T) {
+	cwd := t.TempDir()
+	note := "reminder: remember to take my medicine tonight, it is important"
+	if code := PostToolUse(input(t, cwd, "S", "mcp__db__find", []any{map[string]any{"type": "text", "text": note}}, nil)); code != 0 {
+		t.Fatalf("post-tool-use exit %d", code)
+	}
+	if code := PostCompact(Input{Cwd: cwd, SessionID: "S", Trigger: "auto",
+		CompactSummary: "The user has a medication reminder tonight. Then they asked about leads."}); code != 0 {
+		t.Fatalf("post-compact exit %d", code)
+	}
+	b, _ := os.ReadFile(filepath.Join(StateDir(cwd), "last-compact.json"))
+	var r report
+	if err := json.Unmarshal(b, &r); err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Leaked) != 0 || len(r.Absent) != 1 || r.Absent[0].Source != "tool mcp__db__find" || r.Absent[0].Lines[0] != note {
+		t.Fatalf("report: %s", b)
+	}
+	// no halt: a paraphrase cannot be proven, so tool use continues
+	if code := PreToolUse(input(t, cwd, "S", "Bash", nil, map[string]any{"command": "ls"})); code != 0 {
+		t.Fatalf("expected no halt, got exit %d", code)
+	}
+	// the next context is told which source went missing
+	rd, wr, _ := os.Pipe()
+	saved := os.Stdout
+	os.Stdout = wr
+	code := SessionStart(Input{Cwd: cwd, SessionID: "S", Source: "compact"})
+	wr.Close()
+	os.Stdout = saved
+	out, _ := io.ReadAll(rd)
+	if code != 0 || !strings.Contains(string(out), "left no trace in the summary (1)") || !strings.Contains(string(out), "mcp__db__find") {
+		t.Fatalf("session-start: exit %d, out %s", code, out)
 	}
 }

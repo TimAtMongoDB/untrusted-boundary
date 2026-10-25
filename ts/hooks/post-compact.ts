@@ -16,6 +16,13 @@ const ledger = ledgerRead(input);
 if (ledger.length === 0 && !summary.includes("<untrusted-")) process.exit(0);
 const result = scrubSummary(summary, ledger, { onLeak: "report" });
 
+function previews(hashes: string[], n: number) {
+  return hashes.map((hash) => {
+    const e = ledger.find((l) => l.hash === hash);
+    return { hash, source: e?.source ?? "", lines: (e?.content ?? "").split("\n").filter((l) => l.trim()).slice(0, n) };
+  });
+}
+
 const report = {
   at: new Date().toISOString(),
   trigger: input.trigger ?? null,
@@ -25,11 +32,11 @@ const report = {
   refenced: result.refenced,
   // Claude Code cannot apply the re-fenced text, so the next context gets the
   // lines themselves and is told they are data.
-  refencedPreview: result.refenced.map((hash) => {
-    const e = ledger.find((l) => l.hash === hash);
-    return { hash, source: e?.source ?? "", lines: (e?.content ?? "").split("\n").filter((l) => l.trim()).slice(0, 8) };
-  }),
+  refencedPreview: previews(result.refenced, 8),
   leaked: result.leaked,
+  // Blocks with no trace at all. Anything the summary says about them is the
+  // model's rewording of data, so the next context gets their sources.
+  absent: previews(result.absent, 3),
   ledgerSize: ledger.length,
   // Set to true by `npm run hook:ack` once a human has read the leak. Until
   // then the PreToolUse hook refuses every tool call (unless ON_LEAK=warn).
@@ -37,4 +44,4 @@ const report = {
 };
 
 writeFileSync(join(stateDir(input.cwd), "last-compact.json"), JSON.stringify(report, null, 2));
-logEvent(input.cwd, { event: "compact", kept: result.kept.length, dropped: result.dropped.length, refenced: result.refenced.length, leaked: result.leaked.length });
+logEvent(input.cwd, { event: "compact", kept: result.kept.length, dropped: result.dropped.length, refenced: result.refenced.length, leaked: result.leaked.length, absent: result.absent.length });

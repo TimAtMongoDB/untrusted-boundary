@@ -73,7 +73,7 @@ paths at wherever you put this folder.
 | `PreToolUse` on `*` | Verifies every block in the arguments the model is about to hand to any tool. Missing pair or hash mismatch: **exit 2**, the call does not happen, Claude is told why. Also **exit 2 on every call** while the last compaction report shows a partial leak that nobody has acknowledged. |
 | `PreCompact` | Walks the transcript. Any block failing verification: **exit 2**, no compaction. `UNTRUSTED_BOUNDARY_PRECOMPACT=warn` logs instead. |
 | `PostCompact` | Checks the summary against this session's ledger: which blocks are intact, which lost their tags but kept their bytes, which leaked in part, which failed. Writes `.claude/untrusted-boundary/last-compact.json`. |
-| `SessionStart` on `compact` | Reads that report and tells the new context the summary is model output, how many blocks verified, and quotes every line of data that lost its boundary so the model knows it is data. |
+| `SessionStart` on `compact` | Reads that report and tells the new context the summary is model output, how many blocks verified, quotes every line of data that lost its boundary, and names every ledger block that left no trace (source, hash, first lines) so a paraphrase of it is read as data. |
 
 `npm run hook:ack` marks the last compaction report as read and lifts the halt.
 `UNTRUSTED_BOUNDARY_ON_LEAK=warn` turns the halt into a note for people who want that.

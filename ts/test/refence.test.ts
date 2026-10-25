@@ -60,3 +60,12 @@ test("scrubSummary refuses a summary with a partial leak by default", () => {
   const s = scrubSummary(summary, led, { onLeak: "report" });
   assert.equal(s.leaked.length, 1);
 });
+
+test("paraphrased in the summary: absent, not leaked, and scrubSummary reports it", () => {
+  const note = "reminder: remember to take my medicine tonight, it is important";
+  const led = [{ hash: sha256(note), source: "tool mcp__db__find", content: note }];
+  const s = scrubSummary("The user has a medication reminder tonight. Then they asked about leads.", led);
+  assert.deepEqual(s.absent, [sha256(note)]);
+  assert.equal(s.leaked.length, 0);
+  assert.equal(s.refenced.length, 0);
+});
