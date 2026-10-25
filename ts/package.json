@@ -1,0 +1,34 @@
+{
+  "name": "untrusted-boundary-ts",
+  "version": "0.1.0",
+  "description": "Content-hashed untrusted-data boundaries for tool results, with a hook that refuses the model call when a boundary is missing, mismatched or forged.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "exports": {
+    ".": "./src/boundary.ts",
+    "./guard": "./src/guard.ts",
+    "./summary": "./src/summary.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "hook:ack": "node dist/hooks/ack.js",
+    "fixtures": "node --experimental-strip-types test/gen-fixtures.ts ../testdata/fixtures.json"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "files": [
+    "src",
+    "hooks",
+    "dist",
+    "settings.example.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

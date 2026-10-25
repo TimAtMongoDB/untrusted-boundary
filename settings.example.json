@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/bin/untrusted-boundary", "args": ["pre-tool-use"], "onFailure": "block", "timeout": 10 } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/bin/untrusted-boundary", "args": ["post-tool-use"], "onFailure": "block", "timeout": 10 } ] }
+    ],
+    "PreCompact": [
+      { "hooks": [ { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/bin/untrusted-boundary", "args": ["pre-compact"], "onFailure": "block", "timeout": 30 } ] }
+    ],
+    "PostCompact": [
+      { "hooks": [ { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/bin/untrusted-boundary", "args": ["post-compact"], "timeout": 10 } ] }
+    ],
+    "SessionStart": [
+      { "matcher": "compact", "hooks": [ { "type": "command", "command": "${CLAUDE_PROJECT_DIR}/bin/untrusted-boundary", "args": ["session-start"], "timeout": 10 } ] }
+    ]
+  }
+}
